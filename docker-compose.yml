@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  admin-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5433:80"
+    restart: always
