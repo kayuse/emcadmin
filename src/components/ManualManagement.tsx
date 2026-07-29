@@ -88,7 +88,7 @@ export const ManualManagement: React.FC<{ token?: string }> = ({ token }) => {
     setIsLoading(true);
     setFetchError(false);
     try {
-      const res = await fetch('/manuals?includeDeleted=true');
+      const res = await fetch(import.meta.env.VITE_API_BASE_URL + '/manuals?includeDeleted=true');
       if (res.ok) {
         const data = await res.json();
         setManuals(Array.isArray(data) ? data : []);
@@ -137,7 +137,7 @@ export const ManualManagement: React.FC<{ token?: string }> = ({ token }) => {
     if (!id) return;
     if (window.confirm('Are you sure you want to delete/archive this Sunday School manual?')) {
       try {
-        await fetch(`/admin/manuals/${id}`, {
+        await fetch(import.meta.env.VITE_API_BASE_URL + `/admin/manuals/${id}`, {
           method: 'DELETE',
           headers: {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -210,7 +210,7 @@ export const ManualManagement: React.FC<{ token?: string }> = ({ token }) => {
     if (window.confirm('Generate a 10-question quiz for this topic using AI? This will email all users.')) {
       setIsGeneratingQuiz(topicId);
       try {
-        const res = await fetch(`/admin/quizzes/generate/${topicId}`, {
+        const res = await fetch(import.meta.env.VITE_API_BASE_URL + `/admin/quizzes/generate/${topicId}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -248,7 +248,7 @@ export const ManualManagement: React.FC<{ token?: string }> = ({ token }) => {
     };
 
     try {
-      const endpoint = editingId ? `/admin/manuals/${editingId}` : '/admin/manuals';
+      const endpoint = import.meta.env.VITE_API_BASE_URL + (editingId ? `/admin/manuals/${editingId}` : '/admin/manuals');
       const method = editingId ? 'PUT' : 'POST';
 
       const res = await fetch(endpoint, {
