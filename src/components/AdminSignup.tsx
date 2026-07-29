@@ -34,7 +34,7 @@ export const AdminSignup: React.FC<AdminSignupProps> = ({ onSuccess }) => {
     setLoading(true);
 
     try {
-      const response = await fetch(import.meta.env.VITE_API_BASE_URL + '/auth/admin/signup', {
+      const response = await fetch((import.meta.env.VITE_API_BASE_URL || 'https://api.ecwamediacenter.com') + '/auth/admin/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -135,7 +135,7 @@ export const HymnManagement: React.FC<{ token?: string }> = ({ token }) => {
   useEffect(() => {
     const fetchHymns = async () => {
       try {
-        const res = await fetch(import.meta.env.VITE_API_BASE_URL + '/hymns');
+        const res = await fetch((import.meta.env.VITE_API_BASE_URL || 'https://api.ecwamediacenter.com') + '/hymns');
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
@@ -217,7 +217,7 @@ export const HymnManagement: React.FC<{ token?: string }> = ({ token }) => {
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this hymn?')) {
       try {
-        await fetch(import.meta.env.VITE_API_BASE_URL + `/hymns/${id}`, {
+        await fetch((import.meta.env.VITE_API_BASE_URL || 'https://api.ecwamediacenter.com') + `/hymns/${id}`, {
           method: 'DELETE',
           headers: {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -259,7 +259,7 @@ export const HymnManagement: React.FC<{ token?: string }> = ({ token }) => {
     };
 
     try {
-      const endpoint = import.meta.env.VITE_API_BASE_URL + (editingId ? `/hymns/${editingId}` : '/hymns');
+      const endpoint = (import.meta.env.VITE_API_BASE_URL || 'https://api.ecwamediacenter.com') + (editingId ? `/hymns/${editingId}` : '/hymns');
       const method = editingId ? 'PUT' : 'POST';
 
       const res = await fetch(endpoint, {

@@ -65,7 +65,7 @@ export const AdminList: React.FC<AdminListProps> = ({ currentSessionAdmin, token
   const fetchAdmins = async () => {
     setLoading(true);
     try {
-      const res = await fetch(import.meta.env.VITE_API_BASE_URL + '/users/admins', {
+      const res = await fetch((import.meta.env.VITE_API_BASE_URL || 'https://api.ecwamediacenter.com') + '/users/admins', {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
