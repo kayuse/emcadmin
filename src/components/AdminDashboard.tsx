@@ -17,6 +17,7 @@ import {
 import { HymnManagement } from './HymnManagement';
 import { ManualManagement } from './ManualManagement';
 import { AdminList } from './AdminList';
+import { QuizLeaderboard } from './QuizLeaderboard';
 
 interface AdminDashboardProps {
   session: {
@@ -32,7 +33,7 @@ interface AdminDashboardProps {
   onLogout: () => void;
 }
 
-type NavSection = 'hymns' | 'manuals' | 'admins' | 'overview';
+type NavSection = 'hymns' | 'manuals' | 'quizzes' | 'admins' | 'overview';
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ session, onLogout }) => {
   const { user, token } = session;
@@ -51,6 +52,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ session, onLogou
       label: 'Sunday School Manuals',
       icon: BookOpen,
       description: 'Manage manuals, lesson topics, and free/paid access',
+    },
+    {
+      id: 'quizzes' as NavSection,
+      label: 'Quiz Leaderboards',
+      icon: CheckCircle,
+      description: 'View Sunday School Quiz Leaderboards',
     },
     {
       id: 'admins' as NavSection,
@@ -171,6 +178,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ session, onLogou
           {activeSection === 'hymns' && <HymnManagement token={token} />}
 
           {activeSection === 'manuals' && <ManualManagement token={token} />}
+
+          {activeSection === 'quizzes' && <QuizLeaderboard token={token} />}
 
           {activeSection === 'admins' && (
             <AdminList currentSessionAdmin={user} token={token} />
