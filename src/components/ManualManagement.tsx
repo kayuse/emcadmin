@@ -30,6 +30,7 @@ interface TopicData {
   introduction?: string;
   content?: string;
   type?: string;
+  hasQuiz?: boolean;
 }
 
 interface ManualData {
@@ -306,8 +307,10 @@ export const ManualManagement: React.FC<{ token?: string }> = ({ token }) => {
         
         if (res.ok) {
           setNotification({ type: 'success', message: 'Quiz generated successfully and users notified!' });
+          setActiveTopics(prev => prev.map(t => t.id === topicId ? { ...t, hasQuiz: true } : t));
         } else {
-          setNotification({ type: 'error', message: 'Failed to generate quiz. Try again.' });
+          const errData = await res.json().catch(() => ({}));
+          setNotification({ type: 'error', message: errData.message || 'Failed to generate quiz. Try again.' });
         }
       } catch (err) {
         console.warn('Backend unavailable', err);
@@ -847,11 +850,20 @@ export const ManualManagement: React.FC<{ token?: string }> = ({ token }) => {
                               type="button"
                               onClick={() => handleGenerateQuiz(topic.id)}
                               className="action-btn"
-                              style={{ background: '#3b82f6', color: 'white', borderColor: '#2563eb' }}
-                              title="Generate Quiz using AI"
+                              style={{ 
+                                background: topic.hasQuiz ? '#10b981' : '#3b82f6', 
+                                color: 'white', 
+                                borderColor: topic.hasQuiz ? '#059669' : '#2563eb',
+                                opacity: topic.hasQuiz ? 0.8 : 1,
+                                cursor: topic.hasQuiz ? 'default' : 'pointer'
+                              }}
+                              title={topic.hasQuiz ? "Quiz Already Generated" : "Generate Quiz using AI"}
+                              disabled={topic.hasQuiz}
                             >
                               {isGeneratingQuiz === topic.id ? (
                                 <RefreshCw size={13} className="animate-spin" />
+                              ) : topic.hasQuiz ? (
+                                <CheckCircle size={13} />
                               ) : (
                                 <Sparkles size={13} />
                               )}
