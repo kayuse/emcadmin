@@ -83,6 +83,8 @@ export const ManualManagement: React.FC<{ token?: string }> = ({ token }) => {
   const [topicFormData, setTopicFormData] = useState<TopicData>(INITIAL_TOPIC_FORM);
   const [editingTopicIndex, setEditingTopicIndex] = useState<number | null>(null);
   const [showTopicForm, setShowTopicForm] = useState<boolean>(false);
+  const [aiInputText, setAiInputText] = useState<string>('');
+  const [isExtractingAI, setIsExtractingAI] = useState<boolean>(false);
 
   const fetchManuals = async () => {
     setIsLoading(true);
@@ -154,26 +156,49 @@ export const ManualManagement: React.FC<{ token?: string }> = ({ token }) => {
     }
   };
 
-  const handleAddTopicToManual = () => {
+  const handleAddTopicToManual = async () => {
     if (!topicFormData.topic.trim()) {
       alert('Topic title is required!');
       return;
     }
 
+    setIsSubmitting(true);
+    let savedTopic = { ...topicFormData, number: topicFormData.number || activeTopics.length + 1 };
+    
+    if (editingId) {
+      try {
+        if (editingTopicIndex !== null && topicFormData.id && typeof topicFormData.id === 'number' && topicFormData.id.toString().length < 13) {
+          const endpoint = (import.meta.env.VITE_API_BASE_URL || 'https://api.ecwamediacenter.com') + `/admin/manuals/topics/${topicFormData.id}`;
+          const res = await fetch(endpoint, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            body: JSON.stringify(savedTopic),
+          });
+          if (res.ok) savedTopic = await res.json();
+        } else {
+          const endpoint = (import.meta.env.VITE_API_BASE_URL || 'https://api.ecwamediacenter.com') + `/admin/manuals/${editingId}/topics`;
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            body: JSON.stringify(savedTopic),
+          });
+          if (res.ok) savedTopic = await res.json();
+        }
+      } catch (e) {
+        console.warn('Failed to save topic remotely', e);
+        if (editingTopicIndex === null) savedTopic.id = Date.now();
+      }
+    } else {
+      if (editingTopicIndex === null) savedTopic.id = Date.now();
+    }
+
     let updatedList: TopicData[];
     if (editingTopicIndex !== null) {
       const updated = [...activeTopics];
-      updated[editingTopicIndex] = { ...topicFormData };
+      updated[editingTopicIndex] = savedTopic;
       updatedList = updated;
     } else {
-      updatedList = [
-        ...activeTopics,
-        {
-          ...topicFormData,
-          number: topicFormData.number || activeTopics.length + 1,
-          id: Date.now(),
-        },
-      ];
+      updatedList = [...activeTopics, savedTopic];
     }
 
     updatedList.sort((a, b) => (a.number || 0) - (b.number || 0));
@@ -181,21 +206,82 @@ export const ManualManagement: React.FC<{ token?: string }> = ({ token }) => {
 
     setTopicFormData({
       ...INITIAL_TOPIC_FORM,
-      number: activeTopics.length + (editingTopicIndex !== null ? 1 : 2),
+      number: updatedList.length + 1,
     });
     setEditingTopicIndex(null);
     setShowTopicForm(false);
+    setAiInputText('');
+    setIsSubmitting(false);
   };
 
   const handleEditTopic = (index: number) => {
     setEditingTopicIndex(index);
     setTopicFormData(activeTopics[index]);
+    setAiInputText('');
     setShowTopicForm(true);
   };
 
-  const handleRemoveTopic = (index: number) => {
+  const handleRemoveTopic = async (index: number) => {
+    const topicToDelete = activeTopics[index];
+    if (editingId && topicToDelete.id && typeof topicToDelete.id === 'number' && topicToDelete.id.toString().length < 13) {
+      if (window.confirm('Delete this topic permanently from the database?')) {
+        try {
+          await fetch((import.meta.env.VITE_API_BASE_URL || 'https://api.ecwamediacenter.com') + `/admin/manuals/topics/${topicToDelete.id}`, {
+            method: 'DELETE',
+            headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          });
+          setNotification({ type: 'success', message: 'Topic deleted successfully!' });
+          setTimeout(() => setNotification(null), 3000);
+        } catch (err) {
+          console.warn('Failed to delete topic from db', err);
+        }
+      } else {
+        return;
+      }
+    }
+    
     const updated = activeTopics.filter((_, idx) => idx !== index).map((t, i) => ({ ...t, number: i + 1 }));
     setActiveTopics(updated);
+  };
+
+  const handleExtractTopicWithAI = async () => {
+    if (!aiInputText.trim()) {
+       setNotification({ type: 'error', message: 'Please paste some text first.' });
+       setTimeout(() => setNotification(null), 3000);
+       return;
+    }
+    setIsExtractingAI(true);
+    try {
+      const endpoint = (import.meta.env.VITE_API_BASE_URL || 'https://api.ecwamediacenter.com') + '/admin/manuals/extract-topic';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ text: aiInputText }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTopicFormData(prev => ({
+          ...prev,
+          topic: data.title || prev.topic,
+          aim: data.aim || prev.aim,
+          bibleText: data.bibleText || prev.bibleText,
+          introduction: data.introduction || prev.introduction,
+          content: data.content || prev.content,
+        }));
+        setNotification({ type: 'success', message: 'Topic extracted successfully!' });
+      } else {
+        setNotification({ type: 'error', message: 'Failed to extract topic from AI.' });
+      }
+    } catch (err) {
+      console.warn('AI Extraction failed', err);
+      setNotification({ type: 'error', message: 'Network error extracting topic.' });
+    } finally {
+      setIsExtractingAI(false);
+      setTimeout(() => setNotification(null), 3000);
+    }
   };
 
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState<number | null>(null);
@@ -244,7 +330,7 @@ export const ManualManagement: React.FC<{ token?: string }> = ({ token }) => {
 
     const payload: ManualData = {
       ...formData,
-      topics: activeTopics,
+      ...(editingId ? {} : { topics: activeTopics }),
     };
 
     try {
@@ -595,6 +681,7 @@ export const ManualManagement: React.FC<{ token?: string }> = ({ token }) => {
                       onClick={() => {
                         setEditingTopicIndex(null);
                         setTopicFormData({ ...INITIAL_TOPIC_FORM, number: activeTopics.length + 1 });
+                        setAiInputText('');
                         setShowTopicForm(true);
                       }}
                       className="add-verse-btn"
@@ -609,6 +696,33 @@ export const ManualManagement: React.FC<{ token?: string }> = ({ token }) => {
                       <h4 style={{ margin: '0 0 1rem 0', color: 'var(--primary)' }}>
                         {editingTopicIndex !== null ? `Edit Topic #${topicFormData.number}` : 'New Lesson Topic'}
                       </h4>
+
+                      <div className="ai-extraction-box" style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px dashed rgba(59, 130, 246, 0.5)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem', color: '#60a5fa' }}>
+                          <Sparkles size={16} />
+                          <strong>AI Topic Extraction</strong>
+                        </div>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                          Paste a raw text lesson to automatically extract the Title, Aim, Bible Text, Introduction, and Content. Content will be formatted as HTML.
+                        </p>
+                        <textarea
+                          className="form-input text-area-input"
+                          rows={4}
+                          placeholder="Paste lesson text here..."
+                          value={aiInputText}
+                          onChange={(e) => setAiInputText(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleExtractTopicWithAI}
+                          disabled={isExtractingAI}
+                          className="submit-btn"
+                          style={{ marginTop: '0.75rem', width: '100%', background: '#2563eb', color: 'white', justifyContent: 'center' }}
+                        >
+                          {isExtractingAI ? <span className="spinner" /> : <Sparkles size={14} />}
+                          <span>{isExtractingAI ? 'Extracting with AI...' : 'Extract with AI'}</span>
+                        </button>
+                      </div>
 
                       <div className="form-grid-3">
                         <div className="form-group">
