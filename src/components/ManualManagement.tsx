@@ -91,7 +91,7 @@ export const ManualManagement: React.FC<{ token?: string }> = ({ token }) => {
     setIsLoading(true);
     setFetchError(false);
     try {
-      const res = await fetch((import.meta.env.VITE_API_BASE_URL || 'https://api.ecwamediacenter.com') + '/manuals?includeDeleted=true');
+      const res = await fetch((import.meta.env.VITE_API_BASE_URL || 'https://api.ecwamediacenter.com') + '/manuals');
       if (res.ok) {
         const data = await res.json();
         setManuals(Array.isArray(data) ? data : []);
